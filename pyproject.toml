@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name            = "medpacs-ai"
+version         = "1.0.0"
+description     = "Clinical-grade DICOM ETL pipeline with MRIQC QC and research-backed normalization"
+readme          = "README.md"
+requires-python = ">=3.11"
+license         = { text = "MIT" }
+authors         = [{ name = "Muhammad Umer Raja", email = "umer.raja@medpacs.dev" }]
+keywords        = ["DICOM", "medical imaging", "ETL", "NIfTI", "deep learning", "preprocessing"]
+classifiers     = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.scripts]
+medpacs-etl      = "main:main"
+medpacs-api      = "api.main:app"
+medpacs-listener = "dicom_listener.listener:start_listener"
+
+# ── Tool configurations ────────────────────────────────────────────────────────
+
+[tool.ruff]
+line-length    = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "B008",  # do not perform function calls in argument defaults (FastAPI pattern)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["etl", "api", "dicom_listener", "dashboard"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version         = "3.11"
+strict                 = true
+ignore_missing_imports = true
+exclude                = ["scripts/", "notebooks/"]
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+addopts      = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::ResourceWarning",
+]
+
+[tool.coverage.run]
+source   = ["etl", "api"]
+omit     = ["tests/*", "scripts/*", "*/migrations/*"]
+
+[tool.coverage.report]
+show_missing   = true
+skip_covered   = false
+fail_under     = 60
+exclude_lines  = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]

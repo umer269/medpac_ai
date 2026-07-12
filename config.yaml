@@ -1,0 +1,84 @@
+# ============================================================
+# config.yaml — MedPACS-AI ETL Pipeline Configuration
+# ============================================================
+
+pipeline:
+  name: "MedPACS-AI ETL"
+  version: "1.0.0"
+  log_level: "INFO"            # DEBUG | INFO | WARNING | ERROR
+
+# ── Extract ──────────────────────────────────────────────────
+extract:
+  # Folder to watch / ingest DICOM files from
+  source_dir: "./data/dicom_inbox"
+
+  # Supported DICOM modalities to process (others are skipped)
+  modalities:
+    - MR    # MRI
+    - CT    # Computed Tomography
+    - PT    # PET
+
+  # Recursively search sub-directories
+  recursive: true
+
+# ── Transform ────────────────────────────────────────────────
+transform:
+  # Pixel normalization strategy:
+  #   z_score         — whole-volume mean/std  (fast baseline)
+  #   foreground_zscore — nnU-Net v2 (Isensee et al. 2021/2024) — recommended for MRI
+  #   whitestripe     — tissue-anchored WM peak (Shinohara et al. 2014)
+  #   min_max         — scales to [0, 1]
+  #   window_level    — CT radiology windowing
+  normalization: "foreground_zscore"
+
+  # Window-Level settings (used only when normalization = "window_level")
+  window_center: 40
+  window_width: 400
+
+  # Target voxel spacing in mm [x, y, z] for resampling
+  # Set to null to skip resampling
+  target_spacing: [1.0, 1.0, 1.0]
+
+  # Clip intensity outliers (percentile-based)
+  clip_percentile_low: 0.5
+  clip_percentile_high: 99.5
+
+  # Save a PNG preview slice for quick visual QA
+  save_preview: true
+  preview_slice_axis: 0   # 0=axial (most common clinical view), 1=sagittal, 2=coronal
+
+# ── Load ─────────────────────────────────────────────────────
+load:
+  # Root output folder
+  output_dir: "./output"
+
+  # Processed NIfTI files go here
+  nifti_dir: "./output/nifti"
+
+  # Preview PNG images go here
+  preview_dir: "./output/previews"
+
+  # SQLite database for tracking all processed studies
+  database_path: "./output/metadata.db"
+
+# ── Quality Control ──────────────────────────────────────────────────────
+qc:
+  # Set to false to disable QC gating (useful for debugging)
+  enabled: true
+
+  # Minimum number of slices — rejects scout/localizer scans
+  min_slices: 4
+
+  # Signal-to-Noise Ratio (lower = noisy scan). Ref: MRIQC IQMs
+  min_snr: 5.0
+
+  # FMRIB Brain Extraction Ratio (lower = poor foreground/background contrast)
+  min_fber: 3.0
+
+  # Coefficient of Joint Variation (higher = poor WM/GM contrast)
+  # Shinohara et al. (2014): typical good T1w CJV < 0.5, but relaxed here
+  # because we lack full tissue segmentation
+  max_cjv: 2.0
+
+  # Maximum fraction of missing slices before rejecting a series
+  max_missing_frac: 0.10
