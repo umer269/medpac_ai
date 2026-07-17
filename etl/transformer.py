@@ -202,8 +202,9 @@ class DicomTransformer:
         )
 
         return TransformedSeries(
-            source            = series,
-            normalized_array  = volume,
-            affine            = affine,
-            preview_slice     = preview,
+            source             = series,
+            normalized_array   = volume,
+            affine             = affine,
+            preview_slice      = preview,
+            preview_slice_axis = self.preview_slice_axis,
         )

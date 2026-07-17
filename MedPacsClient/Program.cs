@@ -247,6 +247,7 @@ internal sealed class MedPacsApp
             .AddColumn(new TableColumn("[bold]Description[/]"))
             .AddColumn(new TableColumn("[bold]Slices[/]").RightAligned())
             .AddColumn(new TableColumn("[bold]Spacing (mm)[/]").Centered())
+            .AddColumn(new TableColumn("[bold]AI Volume[/]").Centered())
             .AddColumn(new TableColumn("[bold]Status[/]").Centered())
             .AddColumn(new TableColumn("[bold]Size[/]").RightAligned());
 
@@ -258,6 +259,10 @@ internal sealed class MedPacsApp
                 ? $"{s.SliceThickness:F2} / {s.PixelSpacing ?? "?"}"
                 : "N/A";
 
+            var segVolume = s.SegmentationVolumeCc.HasValue
+                ? $"[green]{s.SegmentationVolumeCc.Value:F2} cc[/]"
+                : "[grey]None[/]";
+
             table.AddRow(
                 $"[grey50]{i + 1}[/]",
                 Markup.Escape($"{s.PatientName} ({s.PatientId})"),
@@ -266,6 +271,7 @@ internal sealed class MedPacsApp
                 $"[grey84]{Markup.Escape(Truncate(s.SeriesDescription, 32))}[/]",
                 $"[white]{s.NumberOfSlices}[/]",
                 $"[grey84]{Markup.Escape(spacing)}[/]",
+                segVolume,
                 $"[{colour}]{Markup.Escape(s.PipelineStatus)}[/]",
                 ModelExtensions.FormatBytes(s.FileSizeBytes));
         }
@@ -328,6 +334,8 @@ internal sealed class MedPacsApp
         grid.AddRow("[bold]Dimensions[/]",      $"{detail.Columns} × {detail.Rows} × {detail.NumberOfSlices} px");
         grid.AddRow("[bold]Slice Thickness[/]", detail.SliceThickness.HasValue ? $"{detail.SliceThickness:F2} mm" : "N/A");
         grid.AddRow("[bold]Pixel Spacing[/]",   Markup.Escape(detail.PixelSpacing ?? "N/A"));
+        grid.AddRow("[bold]AI Seg. Volume[/]",  detail.SegmentationVolumeCc.HasValue ? $"[green]{detail.SegmentationVolumeCc.Value:F2} cc[/]" : "None");
+        grid.AddRow("[bold]AI Seg. Path[/]",    Markup.Escape(detail.SegmentationPath ?? "N/A"));
         grid.AddRow("[bold]Pipeline Status[/]", $"[{colour}]{Markup.Escape(detail.PipelineStatus)}[/]");
         grid.AddRow("[bold]File Size[/]",       ModelExtensions.FormatBytes(detail.FileSizeBytes));
         grid.AddRow("[bold]Files[/]",           $"{detail.FilePaths.Count} DICOM files");

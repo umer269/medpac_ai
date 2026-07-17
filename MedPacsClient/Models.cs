@@ -47,7 +47,9 @@ public record SeriesSummary(
     [property: JsonPropertyName("slice_thickness")]     double? SliceThickness,
     [property: JsonPropertyName("pixel_spacing")]       string? PixelSpacing,
     [property: JsonPropertyName("pipeline_status")]     string  PipelineStatus,
-    [property: JsonPropertyName("file_size_bytes")]     long    FileSizeBytes
+    [property: JsonPropertyName("file_size_bytes")]     long    FileSizeBytes,
+    [property: JsonPropertyName("segmentation_volume_cc")] double? SegmentationVolumeCc,
+    [property: JsonPropertyName("segmentation_path")]      string? SegmentationPath
 );
 
 /// <summary>
@@ -99,6 +101,8 @@ public record SeriesDetail(
     [property: JsonPropertyName("columns")]                int                  Columns,
     [property: JsonPropertyName("pipeline_status")]        string               PipelineStatus,
     [property: JsonPropertyName("file_size_bytes")]        long                 FileSizeBytes,
+    [property: JsonPropertyName("segmentation_volume_cc")] double?              SegmentationVolumeCc,
+    [property: JsonPropertyName("segmentation_path")]      string?              SegmentationPath,
     [property: JsonPropertyName("file_paths")]             List<string>         FilePaths,
     [property: JsonPropertyName("tags")]                   Dictionary<string,string>? Tags
 );

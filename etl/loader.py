@@ -82,12 +82,21 @@ class DicomLoader:
             nifti_path = self._save_nifti(transformed)
             record.nifti_path = nifti_path
 
-            # 2. Save preview PNG ──────────────────────────────────────────────
+            # 2. Save Segmentation NIfTI if present ─────────────────────────────
+            if transformed.segmentation_array is not None:
+                seg_path = self._save_segmentation(transformed)
+                record.segmentation_path = seg_path
+                record.segmentation_volume_cc = transformed.segmentation_volume_cc
+            else:
+                record.segmentation_path = None
+                record.segmentation_volume_cc = None
+
+            # 3. Save preview PNG ──────────────────────────────────────────────
             if self.save_preview and transformed.preview_slice is not None:
                 preview_path = self._save_preview(transformed)
                 record.preview_path = preview_path
 
-            # 3. Mark success ──────────────────────────────────────────────────
+            # 4. Mark success ──────────────────────────────────────────────────
             record.status       = "success"
             record.error_message = None
             record.processed_at  = datetime.datetime.now(timezone.utc)
@@ -132,11 +141,56 @@ class DicomLoader:
         nib.save(nii_img, filepath)
         return filepath
 
+    def _save_segmentation(self, transformed: TransformedSeries) -> str:
+        """Save the binary 3-D segmentation mask as a compressed NIfTI file."""
+        mask = transformed.segmentation_array.astype(np.uint8)
+        mask_nifti = np.transpose(mask, (2, 1, 0))
+
+        nii_img = nib.Nifti1Image(mask_nifti, affine=transformed.affine)
+        nii_img.header.set_xyzt_units(xyz="mm")
+
+        safe_uid = transformed.source.series_uid.replace(".", "_")
+        filename = f"{safe_uid}_seg.nii.gz"
+        filepath = os.path.join(self.nifti_dir, filename)
+        nib.save(nii_img, filepath)
+        return filepath
+
     def _save_preview(self, transformed: TransformedSeries) -> str:
-        """Save the 2-D preview slice (uint8) as a PNG file."""
+        """Save the 2-D preview slice (uint8) as a PNG file, with color overlay if segmentation is present."""
         safe_uid  = transformed.source.series_uid.replace(".", "_")
         filename  = f"{safe_uid}_preview.png"
         filepath  = os.path.join(self.preview_dir, filename)
-        img = Image.fromarray(transformed.preview_slice)   # grayscale (uint8 inferred)
+
+        gray = transformed.preview_slice
+        if transformed.segmentation_array is not None:
+            # Extract corresponding slice of the segmentation mask
+            axis = transformed.preview_slice_axis
+            idx = transformed.segmentation_array.shape[axis] // 2
+            if axis == 0:
+                seg_slice = transformed.segmentation_array[idx, :, :]
+            elif axis == 1:
+                seg_slice = transformed.segmentation_array[:, idx, :]
+            else:
+                seg_slice = transformed.segmentation_array[:, :, idx]
+
+            # Convert gray to RGB
+            rgb = np.stack([gray, gray, gray], axis=-1)
+
+            # Apply overlay where mask is positive
+            mask = seg_slice > 0
+            if np.any(mask):
+                # Choose color based on modality: MR = red/orange, CT = cyan
+                if transformed.source.modality == "MR":
+                    color = np.array([255, 80, 80], dtype=np.uint8)  # semi-transparent reddish-orange
+                else:
+                    color = np.array([80, 255, 255], dtype=np.uint8)  # semi-transparent cyan
+                
+                alpha = 0.45
+                rgb[mask] = (rgb[mask] * (1.0 - alpha) + color * alpha).astype(np.uint8)
+            
+            img = Image.fromarray(rgb, mode="RGB")
+        else:
+            img = Image.fromarray(gray, mode="L")
+
         img.save(filepath)
         return filepath

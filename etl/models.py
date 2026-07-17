@@ -39,14 +39,16 @@ class DicomStudyRecord(Base):
     num_slices      = Column(Integer, nullable=True)
     rows            = Column(Integer, nullable=True)
     cols            = Column(Integer, nullable=True)
-    pixel_spacing_x = Column(Float, nullable=True)
-    pixel_spacing_y = Column(Float, nullable=True)
-    slice_thickness = Column(Float, nullable=True)
-    nifti_path      = Column(String, nullable=True)
-    preview_path    = Column(String, nullable=True)
-    status          = Column(String, nullable=False, default="pending")   # pending | success | failed
-    error_message   = Column(String, nullable=True)
-    processed_at    = Column(DateTime, default=datetime.datetime.utcnow)
+    pixel_spacing_x         = Column(Float, nullable=True)
+    pixel_spacing_y         = Column(Float, nullable=True)
+    slice_thickness         = Column(Float, nullable=True)
+    nifti_path              = Column(String, nullable=True)
+    segmentation_path       = Column(String, nullable=True)
+    segmentation_volume_cc  = Column(Float, nullable=True)
+    preview_path            = Column(String, nullable=True)
+    status                  = Column(String, nullable=False, default="pending")   # pending | success | failed
+    error_message           = Column(String, nullable=True)
+    processed_at            = Column(DateTime, default=datetime.datetime.utcnow)
 
     def __repr__(self) -> str:
         return (
@@ -97,3 +99,8 @@ class TransformedSeries:
     normalized_array: np.ndarray = field(repr=False)
     affine: np.ndarray            = field(repr=False)   # 4×4 NIfTI affine matrix
     preview_slice: Optional[np.ndarray] = field(default=None, repr=False)
+    segmentation_array: Optional[np.ndarray] = field(default=None, repr=False)
+    preview_slice_axis: int = field(default=0, repr=False)
+    segmentation_volume_cc: Optional[float] = field(default=None, repr=False)
+
+

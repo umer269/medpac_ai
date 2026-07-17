@@ -88,24 +88,32 @@ _state: Dict[str, Any] = {
 # ─── Pydantic models ─────────────────────────────────────────────────────────
 
 class SeriesSummary(BaseModel):
-    series_uid:      str
-    patient_id:      Optional[str]
-    patient_name:    Optional[str]
-    modality:        Optional[str]
-    study_date:      Optional[str]
-    study_desc:      Optional[str]
-    num_slices:      Optional[int]
-    rows:            Optional[int]
-    cols:            Optional[int]
-    pixel_spacing_x: Optional[float]
-    pixel_spacing_y: Optional[float]
-    slice_thickness: Optional[float]
-    nifti_path:      Optional[str]
-    preview_path:    Optional[str]
-    status:          Optional[str]
-    error_message:   Optional[str]
-    processed_at:    Optional[str]
-    nifti_size_mb:   Optional[float]
+    series_uid:             str
+    series_instance_uid:    Optional[str] = None
+    patient_id:             Optional[str] = None
+    patient_name:           Optional[str] = None
+    modality:               Optional[str] = None
+    study_date:             Optional[str] = None
+    study_desc:             Optional[str] = None
+    series_description:     Optional[str] = None
+    num_slices:             Optional[int] = None
+    number_of_slices:       Optional[int] = None
+    rows:                   Optional[int] = None
+    cols:                   Optional[int] = None
+    pixel_spacing_x:        Optional[float] = None
+    pixel_spacing_y:        Optional[float] = None
+    pixel_spacing:          Optional[str] = None
+    slice_thickness:        Optional[float] = None
+    nifti_path:             Optional[str] = None
+    segmentation_path:      Optional[str] = None
+    segmentation_volume_cc: Optional[float] = None
+    preview_path:           Optional[str] = None
+    status:                 Optional[str] = None
+    pipeline_status:        Optional[str] = None
+    error_message:          Optional[str] = None
+    processed_at:           Optional[str] = None
+    nifti_size_mb:          Optional[float] = None
+    file_size_bytes:        Optional[int] = 0
 
 
 class PipelineStatus(BaseModel):
@@ -184,25 +192,36 @@ def list_series():
         nifti_mb = None
         if r.nifti_path and os.path.exists(r.nifti_path):
             nifti_mb = round(os.path.getsize(r.nifti_path) / 1_048_576, 2)
+        px_spacing_str = f"{r.pixel_spacing_x or 0.0:.2f},{r.pixel_spacing_y or 0.0:.2f}"
+        file_size = os.path.getsize(r.nifti_path) if r.nifti_path and os.path.exists(r.nifti_path) else 0
+
         result.append(SeriesSummary(
-            series_uid      = r.series_uid,
-            patient_id      = r.patient_id,
-            patient_name    = str(r.patient_name).replace("^", " ") if r.patient_name else None,
-            modality        = r.modality,
-            study_date      = r.study_date,
-            study_desc      = r.study_desc,
-            num_slices      = r.num_slices,
-            rows            = r.rows,
-            cols            = r.cols,
-            pixel_spacing_x = r.pixel_spacing_x,
-            pixel_spacing_y = r.pixel_spacing_y,
-            slice_thickness = r.slice_thickness,
-            nifti_path      = r.nifti_path,
-            preview_path    = r.preview_path,
-            status          = r.status,
-            error_message   = r.error_message,
-            processed_at    = str(r.processed_at),
-            nifti_size_mb   = nifti_mb,
+            series_uid             = r.series_uid,
+            series_instance_uid    = r.series_uid,
+            patient_id             = r.patient_id,
+            patient_name           = str(r.patient_name).replace("^", " ") if r.patient_name else None,
+            modality               = r.modality,
+            study_date             = r.study_date,
+            study_desc             = r.study_desc,
+            series_description     = r.study_desc,
+            num_slices             = r.num_slices,
+            number_of_slices       = r.num_slices,
+            rows                   = r.rows,
+            cols                   = r.cols,
+            pixel_spacing_x        = r.pixel_spacing_x,
+            pixel_spacing_y        = r.pixel_spacing_y,
+            pixel_spacing          = px_spacing_str,
+            slice_thickness        = r.slice_thickness,
+            nifti_path             = r.nifti_path,
+            segmentation_path      = r.segmentation_path,
+            segmentation_volume_cc = r.segmentation_volume_cc,
+            preview_path           = r.preview_path,
+            status                 = r.status,
+            pipeline_status        = r.status,
+            error_message          = r.error_message,
+            processed_at           = str(r.processed_at),
+            nifti_size_mb          = nifti_mb,
+            file_size_bytes        = file_size,
         ))
     return result
 
@@ -224,25 +243,36 @@ def get_series(series_uid: str):
     if row.nifti_path and os.path.exists(row.nifti_path):
         nifti_mb = round(os.path.getsize(row.nifti_path) / 1_048_576, 2)
 
+    px_spacing_str = f"{row.pixel_spacing_x or 0.0:.2f},{row.pixel_spacing_y or 0.0:.2f}"
+    file_size = os.path.getsize(row.nifti_path) if row.nifti_path and os.path.exists(row.nifti_path) else 0
+
     return SeriesSummary(
-        series_uid      = row.series_uid,
-        patient_id      = row.patient_id,
-        patient_name    = str(row.patient_name).replace("^", " ") if row.patient_name else None,
-        modality        = row.modality,
-        study_date      = row.study_date,
-        study_desc      = row.study_desc,
-        num_slices      = row.num_slices,
-        rows            = row.rows,
-        cols            = row.cols,
-        pixel_spacing_x = row.pixel_spacing_x,
-        pixel_spacing_y = row.pixel_spacing_y,
-        slice_thickness = row.slice_thickness,
-        nifti_path      = row.nifti_path,
-        preview_path    = row.preview_path,
-        status          = row.status,
-        error_message   = row.error_message,
-        processed_at    = str(row.processed_at),
-        nifti_size_mb   = nifti_mb,
+        series_uid             = row.series_uid,
+        series_instance_uid    = row.series_uid,
+        patient_id             = row.patient_id,
+        patient_name           = str(row.patient_name).replace("^", " ") if row.patient_name else None,
+        modality               = row.modality,
+        study_date             = row.study_date,
+        study_desc             = row.study_desc,
+        series_description     = row.study_desc,
+        num_slices             = row.num_slices,
+        number_of_slices       = row.num_slices,
+        rows                   = row.rows,
+        cols                   = row.cols,
+        pixel_spacing_x        = row.pixel_spacing_x,
+        pixel_spacing_y        = row.pixel_spacing_y,
+        pixel_spacing          = px_spacing_str,
+        slice_thickness        = row.slice_thickness,
+        nifti_path             = row.nifti_path,
+        segmentation_path      = row.segmentation_path,
+        segmentation_volume_cc = row.segmentation_volume_cc,
+        preview_path           = row.preview_path,
+        status                 = row.status,
+        pipeline_status        = row.status,
+        error_message          = row.error_message,
+        processed_at           = str(row.processed_at),
+        nifti_size_mb          = nifti_mb,
+        file_size_bytes        = file_size,
     )
 
 

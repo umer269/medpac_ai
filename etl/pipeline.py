@@ -18,6 +18,7 @@ from etl.extractor   import DicomExtractor
 from etl.loader      import DicomLoader
 from etl.models      import init_db
 from etl.qc          import SeriesQCChecker
+from etl.segmenter   import DicomSegmenter
 from etl.transformer import DicomTransformer
 
 
@@ -103,6 +104,17 @@ class MedPacsETLPipeline:
         )
         self.qc_enabled = bool(cfg_qc.get("enabled", True))
 
+        # ── AI Segmenter ─────────────────────────────────────────────────────
+        cfg_seg = self.config.get("segmentation", {})
+        self.segmentation_enabled = bool(cfg_seg.get("enabled", True))
+        self.segmenter = DicomSegmenter(
+            enabled          = self.segmentation_enabled,
+            model_type       = cfg_seg.get("model_type", "mock"),
+            model_path       = cfg_seg.get("model_path", ""),
+            threshold        = float(cfg_seg.get("threshold", 0.5)),
+            target_structure = cfg_seg.get("target_structure", "ventricles"),
+        )
+
     # ── public API ────────────────────────────────────────────────────────────
 
     def run(self) -> None:
@@ -131,6 +143,26 @@ class MedPacsETLPipeline:
                         continue
 
                 transformed = self.transformer.transform(dicom_series)
+
+                # ── AI Segmentation ───────────────────────────────────────────
+                if self.segmentation_enabled:
+                    effective_spacing = self.transformer.target_spacing or (
+                        dicom_series.slice_thickness,
+                        dicom_series.pixel_spacing[0],
+                        dicom_series.pixel_spacing[1],
+                    )
+                    mask, vol_cc = self.segmenter.segment(
+                        transformed.normalized_array,
+                        dicom_series.modality,
+                        effective_spacing,
+                    )
+                    transformed.segmentation_array = mask
+                    transformed.segmentation_volume_cc = vol_cc
+                    logger.info(
+                        f"[Segmentation] Segmented {self.segmenter.target_structure} "
+                        f"→ volume: {vol_cc:.2f} cc"
+                    )
+
                 self.loader.load(transformed)
                 success += 1
             except Exception as exc:

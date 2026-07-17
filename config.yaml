@@ -82,3 +82,21 @@ qc:
 
   # Maximum fraction of missing slices before rejecting a series
   max_missing_frac: 0.10
+
+# ── AI Segmentation ──────────────────────────────────────────────────────
+segmentation:
+  # Set to false to disable segmentation inference
+  enabled: true
+
+  # Engine type: "mock" (scipy-based morphological simulation) or "onnx" (requires onnxruntime)
+  model_type: "mock"
+
+  # Path to the ONNX model (used only if model_type is "onnx")
+  model_path: "./models/3d_unet_ventricles.onnx"
+
+  # Sigmoid probability threshold
+  threshold: 0.5
+
+  # Name of target structure to display in UI
+  target_structure: "ventricles"
+

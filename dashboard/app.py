@@ -82,8 +82,8 @@ def api_series():
         SELECT series_uid, patient_id, patient_name, modality,
                study_date, study_desc, num_slices, rows, cols,
                pixel_spacing_x, pixel_spacing_y, slice_thickness,
-               nifti_path, preview_path, status, error_message,
-               processed_at
+               nifti_path, segmentation_path, segmentation_volume_cc,
+               preview_path, status, error_message, processed_at
         FROM dicom_studies
         ORDER BY processed_at DESC
     """)).fetchall()
@@ -96,22 +96,23 @@ def api_series():
             nifti_size_mb = round(os.path.getsize(r.nifti_path) / 1_048_576, 2)
 
         result.append({
-            "series_uid":       r.series_uid,
-            "patient_id":       r.patient_id,
-            "patient_name":     str(r.patient_name).replace("^", " "),
-            "modality":         r.modality,
-            "study_date":       r.study_date,
-            "study_desc":       r.study_desc,
-            "num_slices":       r.num_slices,
-            "rows":             r.rows,
-            "cols":             r.cols,
-            "pixel_spacing_x":  r.pixel_spacing_x,
-            "pixel_spacing_y":  r.pixel_spacing_y,
-            "slice_thickness":  r.slice_thickness,
-            "nifti_size_mb":    nifti_size_mb,
-            "status":           r.status,
-            "error_message":    r.error_message,
-            "processed_at":     str(r.processed_at),
+            "series_uid":             r.series_uid,
+            "patient_id":             r.patient_id,
+            "patient_name":           str(r.patient_name).replace("^", " "),
+            "modality":               r.modality,
+            "study_date":             r.study_date,
+            "study_desc":             r.study_desc,
+            "num_slices":             r.num_slices,
+            "rows":                   r.rows,
+            "cols":                   r.cols,
+            "pixel_spacing_x":        r.pixel_spacing_x,
+            "pixel_spacing_y":        r.pixel_spacing_y,
+            "slice_thickness":        r.slice_thickness,
+            "nifti_size_mb":          nifti_size_mb,
+            "segmentation_volume_cc": r.segmentation_volume_cc,
+            "status":                 r.status,
+            "error_message":          r.error_message,
+            "processed_at":           str(r.processed_at),
         })
     return jsonify(result)
 
@@ -605,6 +606,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             : '<span class="dot dot-red"></span>';
           const spacing = s.pixel_spacing_x ? `${s.pixel_spacing_x.toFixed(2)} × ${s.pixel_spacing_y.toFixed(2)} mm` : '–';
           const size = s.nifti_size_mb ? `${s.nifti_size_mb} MB` : '–';
+          const segVal = s.segmentation_volume_cc !== null ? `${s.segmentation_volume_cc.toFixed(2)} cc` : 'None';
+          const segBadge = s.segmentation_volume_cc !== null
+            ? '<span class="badge badge-green" style="margin-left:8px;font-size:0.65rem;">AI Segmented</span>'
+            : '';
 
           return `
           <div class="series-card">
@@ -624,13 +629,14 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
                   <div class="meta-item"><label>Slices</label><span>${s.num_slices} × ${s.rows}×${s.cols}px</span></div>
                   <div class="meta-item"><label>Spacing</label><span>${spacing}</span></div>
                   <div class="meta-item"><label>Thickness</label><span>${s.slice_thickness ? s.slice_thickness + ' mm' : '–'}</span></div>
-                  <div class="meta-item"><label>NIfTI Size</label><span>${size}</span></div>
+                  <div class="meta-item"><label>AI Segmentation</label><span style="color:${s.segmentation_volume_cc !== null ? 'var(--green)' : 'var(--muted)'};font-weight:bold">${segVal}</span></div>
                 </div>
                 <div class="status-row">
                   ${statusDot}
                   <span style="font-size:0.75rem; color: ${s.status==='success' ? 'var(--green)' : 'var(--red)'}">
                     ${s.status === 'success' ? 'Loaded Successfully' : 'Failed: ' + (s.error_message||'Unknown')}
                   </span>
+                  ${segBadge}
                   <span style="font-size:0.68rem;color:var(--muted);margin-left:auto">${s.processed_at ? s.processed_at.substring(0,19) : ''}</span>
                 </div>
               </div>
