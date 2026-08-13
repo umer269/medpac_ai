@@ -111,7 +111,7 @@ medpacs_ai/
 │   ├── generate_synthetic_dicoms.py   Create test data
 │   └── visualize_qc.py                QC + normalization visualization report
 ├── tests/
-│   ├── test_extractor.py  (WIP)
+│   ├── test_extractor.py
 │   ├── test_transformer.py
 │   ├── test_normalizer.py
 │   ├── test_qc.py

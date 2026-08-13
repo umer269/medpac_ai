@@ -59,6 +59,9 @@ class DicomStudyRecord(Base):
 
 def init_db(db_path: str) -> Session:
     """Create (or connect to) the SQLite metadata database and return a session."""
+    db_dir = os.path.dirname(db_path)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}", echo=False, future=True)
     Base.metadata.create_all(engine)
     return Session(engine)
