@@ -9,14 +9,17 @@ from __future__ import annotations
 
 import datetime
 import os
+from typing import TYPE_CHECKING
 
 import nibabel as nib
 import numpy as np
 from loguru import logger
 from PIL import Image
-from sqlalchemy.orm import Session
 
 from etl.models import DicomStudyRecord, TransformedSeries
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 class DicomLoader:

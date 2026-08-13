@@ -6,7 +6,7 @@ Unit tests for the EXTRACT stage (DICOM parsing and series grouping).
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -14,6 +14,9 @@ import pydicom
 
 from etl.extractor import DicomExtractor, _build_affine, _collect_dicom_files, _tag
 from etl.models import DicomSeries
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_tag_helper():

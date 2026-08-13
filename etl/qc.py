@@ -18,12 +18,14 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
 from scipy import stats
 
-from etl.models import DicomSeries
+if TYPE_CHECKING:
+    from etl.models import DicomSeries
 
 # ─── QC Result dataclass ──────────────────────────────────────────────────────
 

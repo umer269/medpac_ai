@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
-from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pydicom
@@ -18,6 +18,9 @@ from loguru import logger
 from tqdm import tqdm
 
 from etl.models import DicomSeries
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 

@@ -9,10 +9,13 @@ from __future__ import annotations
 import datetime
 import os
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-import numpy as np
 from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session
+
+if TYPE_CHECKING:
+    import numpy as np
 
 # ─── SQLAlchemy ORM ──────────────────────────────────────────────────────────
 
