@@ -51,10 +51,12 @@ jobs:
           cache: pip
       - name: Install lint tools
         run: pip install --no-cache-dir ruff==0.16.3 mypy types-PyYAML
+      - name: Show ruff version
+        run: python -m ruff --version
       - name: Ruff lint
-        run: ruff check etl/ tests/
+        run: python -m ruff check etl/ tests/
       - name: Ruff format check
-        run: ruff format --check etl/ tests/
+        run: python -m ruff format --check etl/ tests/
 
   docker:
     name: Docker Build Check
