@@ -13,17 +13,14 @@ Run from the project root:
 """
 
 import os
-import datetime
+
 import numpy as np
 import pydicom
-from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
-from pydicom.sequence import Sequence
+from pydicom.dataset import FileDataset, FileMetaDataset
 from pydicom.uid import (
     ExplicitVRLittleEndian,
     generate_uid,
-    UID,
 )
-
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 

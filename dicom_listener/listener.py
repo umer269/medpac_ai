@@ -36,14 +36,12 @@ import os
 import subprocess
 import sys
 import threading
-import time
 from pathlib import Path
 
 from loguru import logger
 
 try:
-    from pynetdicom import AE, evt, AllStoragePresentationContexts, VerificationPresentationContexts
-    from pynetdicom.sop_class import Verification
+    from pynetdicom import AE, AllStoragePresentationContexts, VerificationPresentationContexts, evt
 except ImportError:
     print("ERROR: pynetdicom not installed. Run: pip install pynetdicom")
     sys.exit(1)
@@ -165,7 +163,7 @@ def start_listener(ae_title: str, port: int) -> None:
     ]
 
     logger.info("=" * 60)
-    logger.info(f"MedPACS-AI  DICOM C-STORE SCP")
+    logger.info("MedPACS-AI  DICOM C-STORE SCP")
     logger.info(f"  AE Title : {ae_title}")
     logger.info(f"  Port     : {port}")
     logger.info(f"  Inbox    : {INBOX_DIR}")

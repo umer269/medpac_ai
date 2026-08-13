@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import json
 import os
-from typing import List, Optional, Tuple
 
 import numpy as np
 from loguru import logger
@@ -47,10 +46,10 @@ from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
 from scipy.stats import gaussian_kde
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  nnU-Net Foreground Z-Score  (Isensee et al., 2021 / 2024)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def foreground_zscore(
     volume: np.ndarray,
@@ -75,7 +74,7 @@ def foreground_zscore(
         Background voxels are set to 0 after normalization (they carry
         no anatomical signal and would otherwise be mapped to a non-zero value).
     """
-    volume  = volume.astype(np.float64)
+    volume = volume.astype(np.float64)
     fg_mask = volume > foreground_threshold
     fg_vals = volume[fg_mask]
 
@@ -84,14 +83,14 @@ def foreground_zscore(
         return np.zeros_like(volume, dtype=np.float32)
 
     fg_mean = fg_vals.mean()
-    fg_std  = fg_vals.std()
+    fg_std = fg_vals.std()
 
     if fg_std < 1e-8:
         logger.warning("foreground_zscore: foreground std ≈ 0 — returning zeros.")
         return np.zeros_like(volume, dtype=np.float32)
 
-    normalized         = (volume - fg_mean) / fg_std
-    normalized[~fg_mask] = 0.0   # zero out background — no anatomical info
+    normalized = (volume - fg_mean) / fg_std
+    normalized[~fg_mask] = 0.0  # zero out background — no anatomical info
     return normalized.astype(np.float32)
 
 
@@ -99,13 +98,14 @@ def foreground_zscore(
 # 2.  WhiteStripe  (Shinohara et al., 2014)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def whitestripe_normalize(
-    volume:        np.ndarray,
-    mask:          Optional[np.ndarray] = None,
-    stripe_width:  float = 0.05,   # fraction of value range around WM peak
-    n_peaks:       int   = 3,      # number of histogram peaks to detect
-    wm_peak_rank:  int   = -1,     # index into sorted peaks (-1 = rightmost = WM for T1w)
-    bw_method:     str   = "silverman",
+    volume: np.ndarray,
+    mask: np.ndarray | None = None,
+    stripe_width: float = 0.05,  # fraction of value range around WM peak
+    n_peaks: int = 3,  # number of histogram peaks to detect
+    wm_peak_rank: int = -1,  # index into sorted peaks (-1 = rightmost = WM for T1w)
+    bw_method: str = "silverman",
 ) -> np.ndarray:
     """
     WhiteStripe intensity normalization for T1-weighted MRI.
@@ -135,25 +135,22 @@ def whitestripe_normalize(
     volume = volume.astype(np.float64)
 
     # Select analysis voxels
-    if mask is not None:
-        vals = volume[mask > 0].flatten()
-    else:
-        vals = volume[volume > 0].flatten()
+    vals = volume[mask > 0].flatten() if mask is not None else volume[volume > 0].flatten()
 
     if len(vals) < 100:
         logger.warning("WhiteStripe: insufficient foreground voxels — falling back to z-score.")
         return foreground_zscore(volume)
 
     # ── 1. KDE smoothing of intensity histogram ───────────────────────────────
-    kde        = gaussian_kde(vals, bw_method=bw_method)
-    x_range    = np.linspace(vals.min(), vals.max(), 2000)
-    density    = kde(x_range)
+    kde = gaussian_kde(vals, bw_method=bw_method)
+    x_range = np.linspace(vals.min(), vals.max(), 2000)
+    density = kde(x_range)
 
     # ── 2. Peak detection ─────────────────────────────────────────────────────
     peaks, properties = find_peaks(
         density,
-        prominence = density.max() * 0.02,   # at least 2% of max prominence
-        distance   = len(x_range) // 20,     # min distance between peaks
+        prominence=density.max() * 0.02,  # at least 2% of max prominence
+        distance=len(x_range) // 20,  # min distance between peaks
     )
 
     if len(peaks) == 0:
@@ -163,26 +160,26 @@ def whitestripe_normalize(
     # Sort peaks by prominence (descending) and select the WM peak
     prominences = properties["prominences"]
     sorted_by_prominence = peaks[np.argsort(prominences)[::-1]]
-    top_peaks = sorted(sorted_by_prominence[:n_peaks].tolist())   # sort by x position
+    top_peaks = sorted(sorted_by_prominence[:n_peaks].tolist())  # sort by x position
 
     wm_peak_x = x_range[top_peaks[wm_peak_rank]]
     logger.debug(f"WhiteStripe: WM peak intensity = {wm_peak_x:.2f}")
 
     # ── 3. Define stripe ─────────────────────────────────────────────────────
-    val_range  = vals.max() - vals.min()
+    val_range = vals.max() - vals.min()
     half_width = stripe_width * val_range
-    stripe_lo  = wm_peak_x - half_width
-    stripe_hi  = wm_peak_x + half_width
+    stripe_lo = wm_peak_x - half_width
+    stripe_hi = wm_peak_x + half_width
 
     stripe_vals = vals[(vals >= stripe_lo) & (vals <= stripe_hi)]
 
     if len(stripe_vals) < 10:
         logger.warning("WhiteStripe: stripe too narrow (< 10 voxels) — widening to ±10 %.")
-        half_width  = 0.10 * val_range
+        half_width = 0.10 * val_range
         stripe_vals = vals[(vals >= wm_peak_x - half_width) & (vals <= wm_peak_x + half_width)]
 
     # ── 4. Stripe statistics ──────────────────────────────────────────────────
-    mu_ws    = float(stripe_vals.mean())
+    mu_ws = float(stripe_vals.mean())
     sigma_ws = float(stripe_vals.std())
 
     if sigma_ws < 1e-8:
@@ -197,6 +194,7 @@ def whitestripe_normalize(
 # ─────────────────────────────────────────────────────────────────────────────
 # 3.  Nyúl–Udupa Histogram Landmark Normalization  (1999 / 2000)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class NyulUdupaNormalizer:
     """
@@ -229,20 +227,20 @@ class NyulUdupaNormalizer:
             3. Linear extrapolation outside [l_p1, l_p99].
     """
 
-    DEFAULT_LANDMARKS: List[float] = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99]
+    DEFAULT_LANDMARKS: list[float] = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99]
 
-    def __init__(self, landmarks: Optional[List[float]] = None):
-        self.landmarks:       List[float] = landmarks or self.DEFAULT_LANDMARKS
-        self._sum_landmarks:  Optional[np.ndarray] = None
-        self._n_images:       int = 0
-        self.standard_scale:  Optional[np.ndarray] = None   # set after fit()
+    def __init__(self, landmarks: list[float] | None = None):
+        self.landmarks: list[float] = landmarks or self.DEFAULT_LANDMARKS
+        self._sum_landmarks: np.ndarray | None = None
+        self._n_images: int = 0
+        self.standard_scale: np.ndarray | None = None  # set after fit()
 
     # ── Training API ──────────────────────────────────────────────────────────
 
     def update(
         self,
         volume: np.ndarray,
-        mask: Optional[np.ndarray] = None,
+        mask: np.ndarray | None = None,
     ) -> None:
         """Accumulate percentile statistics from one training volume."""
         vals = volume[mask > 0].flatten() if mask is not None else volume[volume > 0].flatten()
@@ -258,7 +256,7 @@ class NyulUdupaNormalizer:
         self._sum_landmarks += lm
         self._n_images += 1
 
-    def fit(self) -> "NyulUdupaNormalizer":
+    def fit(self) -> NyulUdupaNormalizer:
         """
         Compute the standard scale = mean landmark values across all training images.
         Must be called after all `.update()` calls.
@@ -281,7 +279,7 @@ class NyulUdupaNormalizer:
         if self.standard_scale is None:
             raise RuntimeError("Call .fit() before saving.")
         data = {
-            "landmarks":      self.landmarks,
+            "landmarks": self.landmarks,
             "standard_scale": self.standard_scale.tolist(),
             "n_training_images": self._n_images,
         }
@@ -291,15 +289,16 @@ class NyulUdupaNormalizer:
         logger.info(f"NyulUdupa: saved standard scale → {path}")
 
     @classmethod
-    def load(cls, path: str) -> "NyulUdupaNormalizer":
+    def load(cls, path: str) -> NyulUdupaNormalizer:
         """Load a pre-fitted standard scale from a JSON file."""
         with open(path) as fh:
             data = json.load(fh)
         obj = cls(landmarks=data["landmarks"])
         obj.standard_scale = np.array(data["standard_scale"])
-        obj._n_images      = data.get("n_training_images", 0)
-        logger.info(f"NyulUdupa: loaded standard scale from '{path}' "
-                    f"(trained on {obj._n_images} images).")
+        obj._n_images = data.get("n_training_images", 0)
+        logger.info(
+            f"NyulUdupa: loaded standard scale from '{path}' (trained on {obj._n_images} images)."
+        )
         return obj
 
     # ── Transform API ─────────────────────────────────────────────────────────
@@ -307,7 +306,7 @@ class NyulUdupaNormalizer:
     def transform(
         self,
         volume: np.ndarray,
-        mask:   Optional[np.ndarray] = None,
+        mask: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Apply piecewise-linear landmark normalization to a new volume.
@@ -329,11 +328,7 @@ class NyulUdupaNormalizer:
             )
 
         volume = volume.astype(np.float64)
-        vals   = (
-            volume[mask > 0].flatten()
-            if mask is not None
-            else volume[volume > 0].flatten()
-        )
+        vals = volume[mask > 0].flatten() if mask is not None else volume[volume > 0].flatten()
 
         if len(vals) < 100:
             logger.warning("NyulUdupa.transform: too few foreground voxels — returning raw.")
@@ -346,15 +341,17 @@ class NyulUdupaNormalizer:
         # scipy.interpolate.interp1d with fill_value extrapolation handles
         # values outside the [p1, p99] range automatically.
         if len(np.unique(img_landmarks)) < 2:
-            logger.warning("NyulUdupa.transform: degenerate landmarks — returning foreground z-score.")
+            logger.warning(
+                "NyulUdupa.transform: degenerate landmarks — returning foreground z-score."
+            )
             return foreground_zscore(volume)
 
         mapping = interp1d(
             img_landmarks,
             self.standard_scale,
-            kind        = "linear",
-            bounds_error = False,
-            fill_value   = "extrapolate",
+            kind="linear",
+            bounds_error=False,
+            fill_value="extrapolate",
         )
 
         normalized = mapping(volume)
@@ -364,16 +361,16 @@ class NyulUdupaNormalizer:
 
     def fit_transform(
         self,
-        volumes: List[np.ndarray],
-        masks:   Optional[List[Optional[np.ndarray]]] = None,
-    ) -> List[np.ndarray]:
+        volumes: list[np.ndarray],
+        masks: list[np.ndarray | None] | None = None,
+    ) -> list[np.ndarray]:
         """
         Fit the standard scale on all `volumes` and immediately return
         the normalized versions. Useful for single-dataset pipelines.
         """
         if masks is None:
             masks = [None] * len(volumes)
-        for vol, msk in zip(volumes, masks):
+        for vol, msk in zip(volumes, masks, strict=False):
             self.update(vol, msk)
         self.fit()
-        return [self.transform(vol, msk) for vol, msk in zip(volumes, masks)]
+        return [self.transform(vol, msk) for vol, msk in zip(volumes, masks, strict=False)]

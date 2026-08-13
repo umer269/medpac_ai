@@ -21,21 +21,20 @@ Outputs:
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from etl.normalizer import foreground_zscore, whitestripe_normalize, NyulUdupaNormalizer
-from etl.qc import SeriesQCChecker
 from etl.models import DicomSeries
+from etl.normalizer import NyulUdupaNormalizer, foreground_zscore, whitestripe_normalize
+from etl.qc import SeriesQCChecker
 
 OUT_DIR = Path("output/qc_report")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -66,7 +65,7 @@ def plot_normalization_comparison(vol: np.ndarray):
     # Nyul-Udupa: train on 5 augmented versions
     norm = NyulUdupaNormalizer()
     rng = np.random.default_rng(0)
-    for i in range(5):
+    for _i in range(5):
         norm.update(vol * rng.uniform(0.7, 1.3))
     norm.fit()
 
@@ -82,7 +81,7 @@ def plot_normalization_comparison(vol: np.ndarray):
     fig, axes = plt.subplots(1, 5, figsize=(20, 5))
     fig.patch.set_facecolor("#0a0e1a")
 
-    for ax, (name, v) in zip(axes, strategies.items()):
+    for ax, (name, v) in zip(axes, strategies.items(), strict=False):
         slice_ = v[mid_z]
         im = ax.imshow(slice_, cmap="gray", interpolation="bilinear")
         ax.set_title(name, color="white", fontsize=8, pad=6, fontweight="bold")
@@ -105,7 +104,7 @@ def plot_intensity_histograms(vol: np.ndarray):
 
     norm = NyulUdupaNormalizer()
     rng = np.random.default_rng(1)
-    for i in range(5):
+    for _i in range(5):
         norm.update(vol * rng.uniform(0.7, 1.3))
     norm.fit()
 
@@ -126,7 +125,7 @@ def plot_intensity_histograms(vol: np.ndarray):
     ax.yaxis.label.set_color("white")
     ax.spines[:].set_color("#1e2d45")
 
-    for (name, v), color in zip(strategies.items(), colors):
+    for (name, v), color in zip(strategies.items(), colors, strict=False):
         fg = v[v != 0].flatten()
         fg = fg[(fg > np.percentile(fg, 1)) & (fg < np.percentile(fg, 99))]
         ax.hist(fg, bins=200, alpha=0.65, color=color, label=name, density=True)
@@ -168,7 +167,7 @@ def plot_qc_metrics(vol: np.ndarray):
     fig, axes = plt.subplots(1, 4, figsize=(16, 4))
     fig.patch.set_facecolor("#0a0e1a")
 
-    for ax, (metric, (val, vmin, vmax, threshold, desc)) in zip(axes, metrics.items()):
+    for ax, (metric, (val, vmin, vmax, threshold, desc)) in zip(axes, metrics.items(), strict=False):
         ax.set_facecolor("#111827")
         normalized = min(max((val - vmin) / (vmax - vmin), 0), 1)
         color = "#10b981" if (metric != "CJV" and val >= threshold) or \
@@ -216,7 +215,7 @@ def plot_mip_projection(vol: np.ndarray):
         ("Sagittal MIP", np.max(v, axis=1)),
         ("Coronal MIP",  np.max(v, axis=2)),
     ]
-    for ax, (title, mip) in zip(axes, views):
+    for ax, (title, mip) in zip(axes, views, strict=False):
         ax.imshow(mip, cmap=mip_cmap, interpolation="bilinear")
         ax.set_title(title, color="white", fontsize=11, fontweight="bold")
         ax.axis("off")

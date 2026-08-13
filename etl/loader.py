@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime
 import os
-from datetime import timezone
 
 import nibabel as nib
 import numpy as np
@@ -27,16 +26,16 @@ class DicomLoader:
 
     def __init__(
         self,
-        nifti_dir:    str,
-        preview_dir:  str,
-        db_session:   Session,
+        nifti_dir: str,
+        preview_dir: str,
+        db_session: Session,
         save_preview: bool = True,
     ):
-        self.nifti_dir    = nifti_dir
-        self.preview_dir  = preview_dir
-        self.db_session   = db_session
+        self.nifti_dir = nifti_dir
+        self.preview_dir = preview_dir
+        self.db_session = db_session
         self.save_preview = save_preview
-        os.makedirs(nifti_dir,   exist_ok=True)
+        os.makedirs(nifti_dir, exist_ok=True)
         os.makedirs(preview_dir, exist_ok=True)
 
     # ── public API ────────────────────────────────────────────────────────────
@@ -55,25 +54,23 @@ class DicomLoader:
 
         # ── Existing record? Update it; otherwise insert a new one ────────────
         record = (
-            self.db_session.query(DicomStudyRecord)
-            .filter_by(series_uid=source.series_uid)
-            .first()
+            self.db_session.query(DicomStudyRecord).filter_by(series_uid=source.series_uid).first()
         )
         if record is None:
             record = DicomStudyRecord(
-                study_uid    = source.study_uid,
-                series_uid   = source.series_uid,
-                patient_id   = source.patient_id,
-                patient_name = source.patient_name,
-                modality     = source.modality,
-                study_date   = source.study_date,
-                study_desc   = source.study_desc,
-                num_slices   = source.num_slices,
-                rows         = source.rows,
-                cols         = source.cols,
-                pixel_spacing_x = source.pixel_spacing[0],
-                pixel_spacing_y = source.pixel_spacing[1],
-                slice_thickness = source.slice_thickness,
+                study_uid=source.study_uid,
+                series_uid=source.series_uid,
+                patient_id=source.patient_id,
+                patient_name=source.patient_name,
+                modality=source.modality,
+                study_date=source.study_date,
+                study_desc=source.study_desc,
+                num_slices=source.num_slices,
+                rows=source.rows,
+                cols=source.cols,
+                pixel_spacing_x=source.pixel_spacing[0],
+                pixel_spacing_y=source.pixel_spacing[1],
+                slice_thickness=source.slice_thickness,
             )
             self.db_session.add(record)
 
@@ -97,26 +94,21 @@ class DicomLoader:
                 record.preview_path = preview_path
 
             # 4. Mark success ──────────────────────────────────────────────────
-            record.status       = "success"
+            record.status = "success"
             record.error_message = None
-            record.processed_at  = datetime.datetime.now(timezone.utc)
+            record.processed_at = datetime.datetime.now(datetime.UTC)
             self.db_session.commit()
 
-            logger.success(
-                f"Series {source.series_uid[:16]}… saved "
-                f"(NIfTI → {nifti_path})"
-            )
+            logger.success(f"Series {source.series_uid[:16]}… saved (NIfTI → {nifti_path})")
 
         except Exception as exc:
             self.db_session.rollback()
-            record.status        = "failed"
+            record.status = "failed"
             record.error_message = str(exc)
-            record.processed_at  = datetime.datetime.now(timezone.utc)
+            record.processed_at = datetime.datetime.now(datetime.UTC)
             self.db_session.add(record)
             self.db_session.commit()
-            logger.error(
-                f"Failed to load series {source.series_uid[:16]}…: {exc}"
-            )
+            logger.error(f"Failed to load series {source.series_uid[:16]}…: {exc}")
             raise
 
         return record
@@ -157,9 +149,9 @@ class DicomLoader:
 
     def _save_preview(self, transformed: TransformedSeries) -> str:
         """Save the 2-D preview slice (uint8) as a PNG file, with color overlay if segmentation is present."""
-        safe_uid  = transformed.source.series_uid.replace(".", "_")
-        filename  = f"{safe_uid}_preview.png"
-        filepath  = os.path.join(self.preview_dir, filename)
+        safe_uid = transformed.source.series_uid.replace(".", "_")
+        filename = f"{safe_uid}_preview.png"
+        filepath = os.path.join(self.preview_dir, filename)
 
         gray = transformed.preview_slice
         if transformed.segmentation_array is not None:
@@ -181,13 +173,15 @@ class DicomLoader:
             if np.any(mask):
                 # Choose color based on modality: MR = red/orange, CT = cyan
                 if transformed.source.modality == "MR":
-                    color = np.array([255, 80, 80], dtype=np.uint8)  # semi-transparent reddish-orange
+                    color = np.array(
+                        [255, 80, 80], dtype=np.uint8
+                    )  # semi-transparent reddish-orange
                 else:
                     color = np.array([80, 255, 255], dtype=np.uint8)  # semi-transparent cyan
-                
+
                 alpha = 0.45
                 rgb[mask] = (rgb[mask] * (1.0 - alpha) + color * alpha).astype(np.uint8)
-            
+
             img = Image.fromarray(rgb, mode="RGB")
         else:
             img = Image.fromarray(gray, mode="L")

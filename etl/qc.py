@@ -18,7 +18,6 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
 
 import numpy as np
 from loguru import logger
@@ -26,8 +25,8 @@ from scipy import stats
 
 from etl.models import DicomSeries
 
-
 # ─── QC Result dataclass ──────────────────────────────────────────────────────
+
 
 @dataclass
 class QCReport:
@@ -35,26 +34,28 @@ class QCReport:
     Holds all QC metrics computed for a single DICOM series.
     A series is considered acceptable when `passed` is True.
     """
-    series_uid:        str
-    modality:          str
+
+    series_uid: str
+    modality: str
 
     # Completeness
-    n_slices:          int             = 0
-    expected_gap_mm:   float           = 0.0
-    missing_slices:    int             = 0
+    n_slices: int = 0
+    expected_gap_mm: float = 0.0
+    missing_slices: int = 0
 
     # Pixel statistics
-    snr:               float           = 0.0
-    fber:              float           = 0.0     # FMRIB Brain Extraction Ratio
-    efc:               float           = 0.0     # Entropy Focus Criterion
-    cjv:               float           = 0.0     # Coefficient of Joint Variation
+    snr: float = 0.0
+    fber: float = 0.0  # FMRIB Brain Extraction Ratio
+    efc: float = 0.0  # Entropy Focus Criterion
+    cjv: float = 0.0  # Coefficient of Joint Variation
 
     # Issues list — human-readable tags for any failing check
-    issues:            List[str]       = field(default_factory=list)
-    passed:            bool            = True    # overall gate
+    issues: list[str] = field(default_factory=list)
+    passed: bool = True  # overall gate
 
 
 # ─── QC Checker class ─────────────────────────────────────────────────────────
+
 
 class SeriesQCChecker:
     """
@@ -66,25 +67,25 @@ class SeriesQCChecker:
 
     def __init__(
         self,
-        min_slices:       int   = 4,
-        min_snr:          float = 5.0,
-        min_fber:         float = 3.0,
-        max_cjv:          float = 2.0,    # relaxed — full segmentation unavailable
-        max_missing_frac: float = 0.10,   # allow up to 10 % missing slices
+        min_slices: int = 4,
+        min_snr: float = 5.0,
+        min_fber: float = 3.0,
+        max_cjv: float = 2.0,  # relaxed — full segmentation unavailable
+        max_missing_frac: float = 0.10,  # allow up to 10 % missing slices
     ):
-        self.min_slices       = min_slices
-        self.min_snr          = min_snr
-        self.min_fber         = min_fber
-        self.max_cjv          = max_cjv
+        self.min_slices = min_slices
+        self.min_snr = min_snr
+        self.min_fber = min_fber
+        self.max_cjv = max_cjv
         self.max_missing_frac = max_missing_frac
 
     # ── public API ─────────────────────────────────────────────────────────────
 
     def check(self, series: DicomSeries) -> QCReport:
         report = QCReport(
-            series_uid = series.series_uid,
-            modality   = series.modality,
-            n_slices   = series.num_slices,
+            series_uid=series.series_uid,
+            modality=series.modality,
+            n_slices=series.num_slices,
         )
 
         self._check_slice_count(series, report)
@@ -99,10 +100,7 @@ class SeriesQCChecker:
                 f"CJV={report.cjv:.2f}  EFC={report.efc:.4f}"
             )
         else:
-            logger.warning(
-                f"QC FAIL  {series.series_uid[:16]}…  "
-                f"issues={report.issues}"
-            )
+            logger.warning(f"QC FAIL  {series.series_uid[:16]}…  issues={report.issues}")
 
         return report
 
@@ -113,9 +111,7 @@ class SeriesQCChecker:
         if series.num_slices < self.min_slices:
             report.issues.append(f"TOO_FEW_SLICES:{series.num_slices}")
 
-    def _check_pixel_statistics(
-        self, series: DicomSeries, report: QCReport
-    ) -> None:
+    def _check_pixel_statistics(self, series: DicomSeries, report: QCReport) -> None:
         """
         Sanity checks on pixel data:
           1. Constant / dead image
@@ -124,7 +120,7 @@ class SeriesQCChecker:
           4. Possible field-of-view truncation
         """
         volume = series.pixel_array
-        flat   = volume.flatten().astype(np.float64)
+        flat = volume.flatten().astype(np.float64)
 
         # 1. Constant image
         if np.std(flat) < 1e-6:
@@ -141,26 +137,28 @@ class SeriesQCChecker:
 
         # 3. No-reference SNR: signal = p95, noise = std of background voxels
         threshold = np.percentile(flat, 10)
-        bg_vals   = flat[flat <= threshold]
-        signal    = float(np.percentile(flat, 95))
+        bg_vals = flat[flat <= threshold]
+        signal = float(np.percentile(flat, 95))
         noise_std = float(bg_vals.std()) if len(bg_vals) > 0 else 1.0
         report.snr = signal / (noise_std + 1e-8)
 
         # 4. FOV truncation: border voxels brighter than 70th percentile → anatomy cut off
         #    Using p70 (not median) avoids false positives from synthetic/flat-background volumes
         threshold_70 = float(np.percentile(flat, 70))
-        border_mean = float(np.mean([
-            volume[0,  :, :].mean(),
-            volume[-1, :, :].mean(),
-            volume[:,  0, :].mean(),
-            volume[:, -1, :].mean(),
-        ]))
+        border_mean = float(
+            np.mean(
+                [
+                    volume[0, :, :].mean(),
+                    volume[-1, :, :].mean(),
+                    volume[:, 0, :].mean(),
+                    volume[:, -1, :].mean(),
+                ]
+            )
+        )
         if border_mean > threshold_70:
             report.issues.append("POSSIBLE_FOV_TRUNCATION")
 
-    def _compute_iqms(
-        self, series: DicomSeries, report: QCReport
-    ) -> None:
+    def _compute_iqms(self, series: DicomSeries, report: QCReport) -> None:
         """
         Compute MRIQC-inspired Image Quality Metrics.
 
@@ -173,15 +171,15 @@ class SeriesQCChecker:
         as a proxy — appropriate for this pipeline's pre-segmentation stage.
         """
         volume = series.pixel_array.astype(np.float64)
-        flat   = volume.flatten()
+        flat = volume.flatten()
 
         if np.std(flat) < 1e-6:
-            return   # Already flagged as CONSTANT_IMAGE
+            return  # Already flagged as CONSTANT_IMAGE
 
         # Foreground / background split (Otsu percentile proxy)
-        fg_threshold   = np.percentile(flat, 20)
-        fg_vals        = flat[flat >  fg_threshold]
-        bg_vals        = flat[flat <= fg_threshold]
+        fg_threshold = np.percentile(flat, 20)
+        fg_vals = flat[flat > fg_threshold]
+        bg_vals = flat[flat <= fg_threshold]
 
         # FBER
         fg_var = fg_vals.var()
@@ -189,12 +187,12 @@ class SeriesQCChecker:
         report.fber = float(fg_var / (bg_var + 1e-8))
 
         # EFC (normalized Shannon entropy of voxel magnitudes)
-        n        = float(volume.size)
-        abs_vol  = np.abs(volume)
-        b_max    = np.sqrt(np.sum(abs_vol ** 2)) + 1e-8
+        n = float(volume.size)
+        abs_vol = np.abs(volume)
+        b_max = np.sqrt(np.sum(abs_vol**2)) + 1e-8
         norm_vol = abs_vol / b_max
-        efc_max  = (1.0 / np.sqrt(n)) * np.log(1.0 / np.sqrt(n) + 1e-12)
-        efc      = float(np.sum(norm_vol * np.log(norm_vol + 1e-12)))
+        efc_max = (1.0 / np.sqrt(n)) * np.log(1.0 / np.sqrt(n) + 1e-12)
+        efc = float(np.sum(norm_vol * np.log(norm_vol + 1e-12)))
         report.efc = float(efc / efc_max) if abs(efc_max) > 1e-12 else 0.0
 
         # CJV — coefficient of joint variation (WM/GM contrast proxy)

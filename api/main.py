@@ -28,14 +28,13 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
@@ -77,7 +76,7 @@ app.add_middleware(
 
 # ─── Pipeline run state ───────────────────────────────────────────────────────
 
-_state: Dict[str, Any] = {
+_state: dict[str, Any] = {
     "running":        False,
     "last_exit_code": None,
     "last_run_at":    None,
@@ -89,45 +88,45 @@ _state: Dict[str, Any] = {
 
 class SeriesSummary(BaseModel):
     series_uid:             str
-    series_instance_uid:    Optional[str] = None
-    patient_id:             Optional[str] = None
-    patient_name:           Optional[str] = None
-    modality:               Optional[str] = None
-    study_date:             Optional[str] = None
-    study_desc:             Optional[str] = None
-    series_description:     Optional[str] = None
-    num_slices:             Optional[int] = None
-    number_of_slices:       Optional[int] = None
-    rows:                   Optional[int] = None
-    cols:                   Optional[int] = None
-    pixel_spacing_x:        Optional[float] = None
-    pixel_spacing_y:        Optional[float] = None
-    pixel_spacing:          Optional[str] = None
-    slice_thickness:        Optional[float] = None
-    nifti_path:             Optional[str] = None
-    segmentation_path:      Optional[str] = None
-    segmentation_volume_cc: Optional[float] = None
-    preview_path:           Optional[str] = None
-    status:                 Optional[str] = None
-    pipeline_status:        Optional[str] = None
-    error_message:          Optional[str] = None
-    processed_at:           Optional[str] = None
-    nifti_size_mb:          Optional[float] = None
-    file_size_bytes:        Optional[int] = 0
+    series_instance_uid:    str | None = None
+    patient_id:             str | None = None
+    patient_name:           str | None = None
+    modality:               str | None = None
+    study_date:             str | None = None
+    study_desc:             str | None = None
+    series_description:     str | None = None
+    num_slices:             int | None = None
+    number_of_slices:       int | None = None
+    rows:                   int | None = None
+    cols:                   int | None = None
+    pixel_spacing_x:        float | None = None
+    pixel_spacing_y:        float | None = None
+    pixel_spacing:          str | None = None
+    slice_thickness:        float | None = None
+    nifti_path:             str | None = None
+    segmentation_path:      str | None = None
+    segmentation_volume_cc: float | None = None
+    preview_path:           str | None = None
+    status:                 str | None = None
+    pipeline_status:        str | None = None
+    error_message:          str | None = None
+    processed_at:           str | None = None
+    nifti_size_mb:          float | None = None
+    file_size_bytes:        int | None = 0
 
 
 class PipelineStatus(BaseModel):
     running:        bool
-    last_exit_code: Optional[int]
-    last_run_at:    Optional[str]
-    output:         List[str]
+    last_exit_code: int | None
+    last_run_at:    str | None
+    output:         list[str]
 
 
 class Stats(BaseModel):
     total:      int
     success:    int
     failed:     int
-    modalities: Dict[str, int]
+    modalities: dict[str, int]
 
 
 class HealthResponse(BaseModel):
@@ -138,7 +137,7 @@ class HealthResponse(BaseModel):
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def get_session() -> Optional[Session]:
+def get_session() -> Session | None:
     if not DB_PATH.exists():
         return None
     engine = create_engine(f"sqlite:///{DB_PATH}", future=True)
@@ -176,7 +175,7 @@ def health():
     )
 
 
-@app.get("/series", response_model=List[SeriesSummary], tags=["Series"])
+@app.get("/series", response_model=list[SeriesSummary], tags=["Series"])
 def list_series():
     """Return all processed DICOM series from the metadata database, newest first."""
     session = get_session()
@@ -325,7 +324,7 @@ def stats():
     session.close()
 
     total = success = failed = 0
-    modalities: Dict[str, int] = {}
+    modalities: dict[str, int] = {}
     for r in rows:
         total   += r.cnt
         success += r.cnt if r.status == "success" else 0

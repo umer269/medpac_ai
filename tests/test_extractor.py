@@ -7,12 +7,12 @@ Unit tests for the EXTRACT stage (DICOM parsing and series grouping).
 from __future__ import annotations
 
 from pathlib import Path
-import numpy as np
-import pydicom
-import pytest
 from unittest.mock import MagicMock, patch
 
-from etl.extractor import _tag, _build_affine, _collect_dicom_files, DicomExtractor
+import numpy as np
+import pydicom
+
+from etl.extractor import DicomExtractor, _build_affine, _collect_dicom_files, _tag
 from etl.models import DicomSeries
 
 

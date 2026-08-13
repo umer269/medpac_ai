@@ -13,15 +13,14 @@ Provides:
 """
 
 import os
-import base64
 import subprocess
 import threading
 import time
 from pathlib import Path
+
+from flask import Flask, abort, jsonify, render_template_string, send_file
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
-
-from flask import Flask, jsonify, send_file, abort, render_template_string
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent.parent
@@ -131,9 +130,9 @@ def api_preview(series_uid):
 def api_logs():
     if not LOG_PATH.exists():
         return jsonify({"lines": []})
-    with open(LOG_PATH, "r", encoding="utf-8", errors="replace") as f:
+    with open(LOG_PATH, encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
-    return jsonify({"lines": [l.rstrip() for l in lines[-60:]]})
+    return jsonify({"lines": [line.rstrip() for line in lines[-60:]]})
 
 
 @app.route("/api/run", methods=["POST"])

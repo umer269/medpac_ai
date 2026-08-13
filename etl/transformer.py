@@ -7,17 +7,15 @@ builds a NIfTI affine, and optionally generates a PNG preview slice.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 from loguru import logger
-from scipy.ndimage import zoom    # type: ignore[import]
+from scipy.ndimage import zoom  # type: ignore[import]
 
-from etl.models     import DicomSeries, TransformedSeries
+from etl.models import DicomSeries, TransformedSeries
 from etl.normalizer import foreground_zscore, whitestripe_normalize
 
-
 # ─── Normalization strategies ─────────────────────────────────────────────────
+
 
 def _normalize_z_score(arr: np.ndarray) -> np.ndarray:
     """
@@ -25,7 +23,7 @@ def _normalize_z_score(arr: np.ndarray) -> np.ndarray:
     Small epsilon avoids division-by-zero for empty/constant volumes.
     """
     mean = arr.mean()
-    std  = arr.std() + 1e-8
+    std = arr.std() + 1e-8
     return (arr - mean) / std
 
 
@@ -54,40 +52,41 @@ def _normalize_window_level(
 
 # ─── Resampling ───────────────────────────────────────────────────────────────
 
+
 def _resample_volume(
     volume: np.ndarray,
-    current_spacing: Tuple[float, float, float],
-    target_spacing:  Tuple[float, float, float],
+    current_spacing: tuple[float, float, float],
+    target_spacing: tuple[float, float, float],
 ) -> np.ndarray:
     """
     Resamples a (Z, Y, X) volume from current_spacing to target_spacing (mm).
     Uses tri-linear interpolation (order=1) to preserve intensity values.
     """
-    zoom_factors = tuple(
-        cs / ts for cs, ts in zip(current_spacing, target_spacing)
-    )
+    zoom_factors = tuple(cs / ts for cs, ts in zip(current_spacing, target_spacing, strict=False))
     logger.debug(f"Resampling with zoom factors: {zoom_factors}")
     return zoom(volume, zoom_factors, order=1, prefilter=False)
 
 
 # ─── Affine construction ──────────────────────────────────────────────────────
 
+
 def _build_simple_affine(
-    pixel_spacing: Tuple[float, float],
+    pixel_spacing: tuple[float, float],
     slice_thickness: float,
 ) -> np.ndarray:
     """
     Build a minimal NIfTI affine from pixel spacing and slice thickness.
     Assumes standard RAS orientation (scanner-space identity rotation).
     """
-    affine        = np.eye(4, dtype=float)
-    affine[0, 0]  = pixel_spacing[1]   # column spacing → x
-    affine[1, 1]  = pixel_spacing[0]   # row spacing    → y
-    affine[2, 2]  = slice_thickness    # slice spacing  → z
+    affine = np.eye(4, dtype=float)
+    affine[0, 0] = pixel_spacing[1]  # column spacing → x
+    affine[1, 1] = pixel_spacing[0]  # row spacing    → y
+    affine[2, 2] = slice_thickness  # slice spacing  → z
     return affine
 
 
 # ─── Preview slice ────────────────────────────────────────────────────────────
+
 
 def _extract_preview_slice(
     volume: np.ndarray,
@@ -113,6 +112,7 @@ def _extract_preview_slice(
 
 # ─── Transformer class ────────────────────────────────────────────────────────
 
+
 class DicomTransformer:
     """
     Applies configurable preprocessing to a DicomSeries and returns a
@@ -121,23 +121,23 @@ class DicomTransformer:
 
     def __init__(
         self,
-        normalization:        str   = "z_score",
-        window_center:        float = 40.0,
-        window_width:         float = 400.0,
-        target_spacing:       Optional[Tuple[float, float, float]] = None,
-        clip_percentile_low:  float = 0.5,
+        normalization: str = "z_score",
+        window_center: float = 40.0,
+        window_width: float = 400.0,
+        target_spacing: tuple[float, float, float] | None = None,
+        clip_percentile_low: float = 0.5,
         clip_percentile_high: float = 99.5,
-        save_preview:         bool  = True,
-        preview_slice_axis:   int   = 2,
+        save_preview: bool = True,
+        preview_slice_axis: int = 2,
     ):
-        self.normalization        = normalization
-        self.window_center        = window_center
-        self.window_width         = window_width
-        self.target_spacing       = target_spacing
-        self.clip_percentile_low  = clip_percentile_low
+        self.normalization = normalization
+        self.window_center = window_center
+        self.window_width = window_width
+        self.target_spacing = target_spacing
+        self.clip_percentile_low = clip_percentile_low
         self.clip_percentile_high = clip_percentile_high
-        self.save_preview         = save_preview
-        self.preview_slice_axis   = preview_slice_axis
+        self.save_preview = save_preview
+        self.preview_slice_axis = preview_slice_axis
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -196,15 +196,13 @@ class DicomTransformer:
 
         # 5. Optional preview slice
         preview = (
-            _extract_preview_slice(volume, self.preview_slice_axis)
-            if self.save_preview
-            else None
+            _extract_preview_slice(volume, self.preview_slice_axis) if self.save_preview else None
         )
 
         return TransformedSeries(
-            source             = series,
-            normalized_array   = volume,
-            affine             = affine,
-            preview_slice      = preview,
-            preview_slice_axis = self.preview_slice_axis,
+            source=series,
+            normalized_array=volume,
+            affine=affine,
+            preview_slice=preview,
+            preview_slice_axis=self.preview_slice_axis,
         )
